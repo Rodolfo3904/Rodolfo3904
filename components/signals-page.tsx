@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
@@ -17,7 +17,7 @@ interface Signal {
 }
 
 export default function SignalsPage() {
-  const [signals] = useState<Signal[]>([
+  const [signals, setSignals] = useState<Signal[]>([
     {
       id: "1",
       type: "CALL",
@@ -29,29 +29,24 @@ export default function SignalsPage() {
       status: "won",
       method: "Padrão TH",
     },
-    {
-      id: "2",
-      type: "PUT",
-      entry: 24800,
-      target: 24200,
-      stop: 25300,
-      timestamp: "14:15",
-      channel: "FREE",
-      status: "won",
-      method: "Suporte/Resistência",
-    },
-    {
-      id: "3",
-      type: "CALL",
-      entry: 24500,
-      target: 25000,
-      stop: 24000,
-      timestamp: "13:45",
-      channel: "VIP",
-      status: "pending",
-      method: "Fibonacci",
-    },
   ])
+
+  useEffect(() => {
+    // Fetch sinais da API a cada 3 segundos
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch("/api/telegram/webhook")
+        const data = await response.json()
+        if (data && data.length > 0) {
+          setSignals(data)
+        }
+      } catch (error) {
+        console.error("[v0] Erro ao buscar sinais:", error)
+      }
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const [filterChannel, setFilterChannel] = useState<"ALL" | "VIP" | "FREE">("ALL")
 
@@ -86,37 +81,45 @@ export default function SignalsPage() {
       </div>
 
       <div className="space-y-4">
-        {filteredSignals.map((signal) => (
-          <Card key={signal.id} className="border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-                <div>
-                  <p className="text-xs text-muted-foreground">Tipo</p>
-                  <p className={`font-bold text-lg ${signal.type === "CALL" ? "text-green-500" : "text-red-500"}`}>
-                    {signal.type}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Entrada</p>
-                  <p className="font-bold text-primary">{signal.entry}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Target</p>
-                  <p className="font-bold text-green-500">{signal.target}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Stop</p>
-                  <p className="font-bold text-red-500">{signal.stop}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={() => copySignal(signal)} className="bg-primary hover:bg-primary/90" size="sm">
-                    Copiar
-                  </Button>
-                </div>
-              </div>
+        {filteredSignals.length === 0 ? (
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardContent className="p-8 text-center text-muted-foreground">
+              Aguardando sinais do Telegram...
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          filteredSignals.map((signal) => (
+            <Card key={signal.id} className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Tipo</p>
+                    <p className={`font-bold text-lg ${signal.type === "CALL" ? "text-green-500" : "text-red-500"}`}>
+                      {signal.type}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Entrada</p>
+                    <p className="font-bold text-primary">{signal.entry}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Target</p>
+                    <p className="font-bold text-green-500">{signal.target}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Stop</p>
+                    <p className="font-bold text-red-500">{signal.stop}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => copySignal(signal)} className="bg-primary hover:bg-primary/90" size="sm">
+                      Copiar
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   )
